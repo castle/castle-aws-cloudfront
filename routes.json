@@ -1,0 +1,7 @@
+[
+  {
+    "event": "$registration",
+    "method": "POST",
+    "uri": "/register"
+  }
+]
