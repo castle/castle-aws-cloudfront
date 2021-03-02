@@ -145,3 +145,7 @@ Your result will look something like this:
 }
 
 The "prodStatus" field indicates what the actual response would be in production.
+
+## Adapting To Your Use Case
+
+To add new routes and methods to be protected by Castle, you can edit the `routes.json` file to include additional routes. You may want to add the route for your login endpoint, as well as the route for your password reset endpoint.
