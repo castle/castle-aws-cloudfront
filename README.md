@@ -14,7 +14,7 @@ Once you've installed this Lambda function, it will listen for POSTs to the
 
 route.
 
-The POST should include a Castle `client_id`. Click [here](https://docs.castle.io/preauth/) to learn more about how to include a Castle `client_id` in a POST.
+The POST should include a Castle `client_id` in the body of the request. Click [here](https://docs.castle.io/preauth/) to learn more about how to include a Castle `client_id` in a POST.
 
 When the Lambda function receives the POST, it will in turn make a POST to Castle, and receive a risk score in return. If the risk score is above the `riskThreshold`, then the function will respond with a 403. If the risk score is below the `riskThreshold`, the function will respond with a 200.
 
@@ -101,6 +101,10 @@ Click on the Permissions tab and add
 `edgelambda.amazonaws.com` 
 
 to the Trust Relationship for the role that was created automatically when you created the Lambda function. More details on Lambda@Edge IAM are available [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-edge-permissions.html).
+
+#### Test your Lambda function
+
+You can test your Lambda function with the `clientIDbody.json` sample event included in the `sampleEvents` directory.
 
 #### Add a CloudFront trigger
 
