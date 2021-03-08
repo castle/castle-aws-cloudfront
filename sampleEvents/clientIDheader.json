@@ -27,9 +27,14 @@
                 "key": "User-Name",
                 "value": "aws-cloudfront"
               }
+            ],
+            "x-castle-client-id": [
+              {
+                "key": "X-Castle-Client-ID",
+                "value": "067ed432-0023-4194-a080-87cef5e689ee-38f77d8446f0c89b011fd1eeb0d7d1db7d97f6"
+              }
             ]
-          },
-          "data-urlencode": "client_id=067ed432-0023-4194-a080-87cef5e689ee-38f77d8446f0c89b011fd1eeb0d7d1db7d97f6"
+          }
         }
       }
     }

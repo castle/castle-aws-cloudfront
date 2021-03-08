@@ -15,17 +15,47 @@ const routes = require('./routes.json');
 
 const apiKey = apiKeyObj.apiKey;
 
-function getCastleAssessment(request, castleEventName) {
+function getCastleClientID(request) {
 
   return new Promise(function(resolve, reject) {
-
-    let client_id = "";
 
     if (request.hasOwnProperty("body") && request.body.hasOwnProperty("data")) {
       const inboundBody = Buffer.from(request.body.data, 'base64').toString();
       const params = querystring.parse(inboundBody);
-      client_id = params["client_id"];
+      resolve (params["client_id"]);
     }
+
+    if (request.hasOwnProperty("headers") && request.headers.hasOwnProperty("x-castle-client-id")) {
+      resolve (request.headers["x-castle-client-id"]);
+    }
+
+    if (request.hasOwnProperty("headers") && request.headers.hasOwnProperty("cookie")) {
+
+      const cookie = request.headers.cookie
+
+      const a = cookie.split("=")
+
+      for (i = 0; i < a.length; i++) {
+        if (a[i] === "__cid") {
+          resolve(a[i+1])
+        }
+      }
+    }
+    resolve("")
+  })
+}
+
+async function getCastleAssessment(request, castleEventName) {
+
+  return new Promise(function(resolve, reject) {
+
+    let client_id = await getCastleClientID(request);
+
+    console.log("the castle client id is: " + client_id)
+
+    if (client_id === "") {
+      reject({error: "the castle client_id is required"});
+    } 
 
     let body = JSON.stringify({
       event: castleEventName,
@@ -65,7 +95,7 @@ function getCastleAssessment(request, castleEventName) {
       })
       .on("error", () => {
         console.error;
-        reject("error");
+        reject({error: "something went wrong with the request to Castle"});
       })
       .end(body);
   });
@@ -161,5 +191,23 @@ exports.handler = (event, context, callback) => {
         body: JSON.stringify(obj)
       };
       callback(null, resp);
+    });
+    .catch(error => {
+      const errorResponse = {
+        status: '200',
+        statusDescription: 'OK',
+        headers: {
+            'cache-control': [{
+                key: 'Cache-Control',
+                value: 'max-age=100'
+            }],
+            'content-type': [{
+                key: 'Content-Type',
+                value: 'application/json'
+            }]
+        },
+        body: JSON.stringify(error)
+      };
+      callback(null, errorResponse);      
     });
 };
