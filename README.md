@@ -14,9 +14,11 @@ Once you've installed this Lambda function, it will listen for POSTs to the
 
 route.
 
-The POST should include a Castle `client_id` in the body of the request. Click [here](https://docs.castle.io/preauth/) to learn more about how to include a Castle `client_id` in a POST.
+The POST should include a Castle `client_id` in the body of the request, with Content-Type: application/x-www-form-urlencoded. Click [here](https://docs.castle.io/preauth/) to learn more about how to include a Castle `client_id` in a POST.
 
-When the Lambda function receives the POST, it will in turn make a POST to Castle, and receive a risk score in return. If the risk score is above the `riskThreshold`, then the function will respond with a 403. If the risk score is below the `riskThreshold`, the function will respond with a 200.
+> Note: Lambda@Edge + Cloudfront does not appear to support custom headers at this point, so you must include the `client_id` in the body. 
+
+When the Lambda function receives the POST, it will in turn make a POST to Castle, and receive a verdict (`action`) and risk score in return. If the risk score is above the `riskThreshold`, or the verdict is "deny", then the function will respond with a 403. If the risk score is below the `riskThreshold`, or the verdict is not "deny", the function will respond with a 200.
 
 ## Prerequisites
 
@@ -58,7 +60,7 @@ Before you set up your Lambda function, you need to prepare this repo, which inv
 
 #### Add your Castle API key
 
-Unlike "normal" Lambda functions, Lambda@Edge functions do not allow environment variables.
+Unlike standard Lambda functions, Lambda@Edge functions do *not* allow environment variables.
 
 So, I have created a file - `apiKeyExample.json` - in this repo. Copy the file 
 
@@ -131,8 +133,6 @@ After you deploy, it will take a few minutes (sometimes longer) for the Lambda f
 To test the deployment, send a POST to:
 
 `{{cloudfront_url}}/register`
-
-For best results, include the Castle `client_id` in the POST. Click [here](https://docs.castle.io/preauth/) for more information about how to include the Castle `client_id` in the POST.
 
 Your result will look something like this:
 
