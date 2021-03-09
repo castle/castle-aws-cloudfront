@@ -104,11 +104,15 @@ Click on the Permissions tab and add
 
 to the Trust Relationship for the role that was created automatically when you created the Lambda function. More details on Lambda@Edge IAM are available [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-edge-permissions.html).
 
+> Note: reload the Lambda dashboard after you adjust the permissions for the Lambda function.
+
 #### Test your Lambda function
 
-You can test your Lambda function with the `clientIDbody.json` sample event included in the `sampleEvents` directory.
+You can test your Lambda function with the `clientIDbody.json` sample event included in the `sampleRequests` directory.
 
 #### Add a CloudFront trigger
+
+> As of March 2021, Lambda@Edge functions are available only the `us-east-1` region. If you don't see Cloudfront in the list of triggers, make sure you're in the `us-east-1` region.
 
 Click Add Trigger
 
@@ -133,6 +137,8 @@ After you deploy, it will take a few minutes (sometimes longer) for the Lambda f
 To test the deployment, send a POST to:
 
 `{{cloudfront_url}}/register`
+
+A sample CURL request is included in the `sampleRequests` folder.
 
 Your result will look something like this:
 

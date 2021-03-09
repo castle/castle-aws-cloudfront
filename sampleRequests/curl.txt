@@ -1,0 +1,3 @@
+curl --location --request POST 'https://d28phusgt75asg.cloudfront.net/register' \
+--header 'Content-Type: application/x-www-form-urlencoded' \
+--data-urlencode 'client_id=067ed432-0023-4194-a080-87cef5e689ee-38f77d8446f0c89b011fd1eeb0d7d1db7d97f6'
