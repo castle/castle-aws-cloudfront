@@ -168,6 +168,14 @@ exports.handler = (event, context, callback) => {
             'content-type': [{
                 key: 'Content-Type',
                 value: 'application/json'
+            }],
+            'access-control-allow-origin': [{
+                key: 'Access-Control-Allow-Origin',
+                value: '*'
+            }],
+            'access-control-allow-methods': [{
+                key: 'Access-Control-Allow-Methods',
+                value: 'GET, HEAD, POST'
             }]
         },
         body: JSON.stringify(obj)

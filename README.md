@@ -74,6 +74,8 @@ and put your Castle API key in the `apiKey.json` file.
 
 > Note: this pattern of putting the API key in a separate file simply allows the API key to be easily excluded from source control. The API key will be visible to any AWS user/role who has access to the source of the Lambda function (just like environment variables).
 
+> Note: the default CORS policy in this script is to allow all origins; you can adjust as necessary.
+
 #### Create a .zip archive
 
 This command will create a `.zip` archive:
