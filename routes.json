@@ -1,6 +1,6 @@
 [
   {
-    "event": "$registration",
+    "event": "$registration.attempted",
     "method": "POST",
     "uri": "/register"
   }
