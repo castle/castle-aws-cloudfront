@@ -17,35 +17,40 @@ const apiKey = apiKeyObj.apiKey;
 
 function getCastleClientID(request) {
 
+  let obj = {}
+
   return new Promise(function(resolve, reject) {
 
     // is the client_id in the body?
     if (request.hasOwnProperty("body") && request.body.hasOwnProperty("data")) {
       const inboundBody = Buffer.from(request.body.data, 'base64').toString();
       const params = querystring.parse(inboundBody);
-      return resolve(params["client_id"]);
+
+      obj.client_id = params["client_id"];
+      obj.username = params["username"];
+
+      return resolve(obj);
     }
 
-    return resolve("");
+    return resolve({});
   })
 }
 
 async function getCastleAssessment(request, castleEventName) {
 
-  let client_id = await getCastleClientID(request);
+  let props = await getCastleClientID(request);
 
   return new Promise(function(resolve, reject) {
 
-    console.log("the castle client id is: " + client_id)
-
-    if (client_id === "") {
-      return reject({error: "the castle client_id is required"});
-    } 
+    console.log("the castle client id is: " + props.client_id)
 
     let body = JSON.stringify({
       event: castleEventName,
+      user_traits: {
+        email: props.username
+      },
       context: {
-        client_id: client_id,
+        client_id: props.client_id,
         ip: request.clientIp,
         headers: scrubHeaders(request.headers)
       }
