@@ -27,7 +27,6 @@ function getCastleClientID(request) {
       const params = querystring.parse(inboundBody);
 
       obj.client_id = params["client_id"];
-      obj.username = params["username"];
 
       return resolve(obj);
     }
@@ -46,9 +45,6 @@ async function getCastleAssessment(request, castleEventName) {
 
     let body = JSON.stringify({
       event: castleEventName,
-      user_traits: {
-        email: props.username
-      },
       context: {
         client_id: props.client_id,
         ip: request.clientIp,
@@ -180,7 +176,7 @@ exports.handler = (event, context, callback) => {
             }],
             'access-control-allow-methods': [{
                 key: 'Access-Control-Allow-Methods',
-                value: 'GET, HEAD, POST'
+                value: 'GET, HEAD, OPTIONS, POST'
             }]
         },
         body: JSON.stringify(obj)
