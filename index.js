@@ -1,204 +1,270 @@
 'use strict';
 
-const https = require("https");
-
+const https = require('https');
 const querystring = require('querystring');
+const config = require('./config.json');
 
-/********************************************/
+const CASTLE_API_SECRET = config.CASTLE_API_SECRET;
+const CASTLE_APP_ID = config.CASTLE_APP_ID;
 
-const riskThreshold = 0.9;
+// Modify the routes according to your use case
+const routes = [
+  {
+    // Castle event
+    event: '$registration', // function to be executed if the route is matched
+    method: 'POST', // HTTP method of the matched request
+    pathname: '/users/sign_up', // pathname of the matched request
+  },
+];
 
-const apiKeyObj = require('./apiKey.json');
-const routes = require('./routes.json');
+/**
+ * Generate HTML response
+ */
+function generateHTMLResponse() {
+  return `
+  <html>
+    <head>
+      <link rel="icon" href="data:,">
+      <script src="//d2t77mnxyo7adj.cloudfront.net/v1/c.js?${CASTLE_APP_ID}"></script>
 
-/********************************************/
+      <script>
+        window.onload = function() {
+          var form = document.getElementById('registration-form');
 
-const apiKey = apiKeyObj.apiKey;
+          form.addEventListener('submit', function(evt) {
+            evt.preventDefault();
 
-function getCastleClientID(request) {
+            // Get the one-time request token from Castle
+            _castle('createRequestToken').then(function(token){
 
-  let obj = {}
+              // Populate a hidden <input> field named 'castle_request_token'
+              var hiddenInput = document.createElement('input');
+              hiddenInput.setAttribute('type', 'hidden');
+              hiddenInput.setAttribute('name', 'castle_request_token');
+              hiddenInput.setAttribute('value', token);
 
-  return new Promise(function(resolve, reject) {
+              // Add the 'castle_request_token' to the HTML form
+              form.appendChild(hiddenInput);
 
-    // is the client_id in the body?
-    if (request.hasOwnProperty("body") && request.body.hasOwnProperty("data")) {
-      const inboundBody = Buffer.from(request.body.data, 'base64').toString();
-      const params = querystring.parse(inboundBody);
+              form.submit();
+            });
 
-      obj.client_id = params["client_id"];
+          });
+        }
+      </script>
+    </head>
 
-      return resolve(obj);
-    }
-
-    return resolve({});
-  })
+  <body>
+    <form action= "/users/sign_up" method="POST" id="registration-form">
+      <label for="email">Email</label>
+      <input type="text" name= "email"><br><br>
+      <input type="submit" value= "submit">
+  </body>
+  </html>
+`;
 }
 
-async function getCastleAssessment(request, castleEventName) {
+/**
+ * Return prefiltered request headers
+ * @param {object} requestHeaders
+ */
+function scrubHeaders(requestHeaders) {
+  const scrubbedHeaders = ['cookie', 'authorization'];
 
-  let props = await getCastleClientID(request);
+  if (!requestHeaders) {
+    return {};
+  }
 
-  return new Promise(function(resolve, reject) {
+  return Object.keys(requestHeaders).reduce((acc, headerKey) => {
+    const isScrubbed = scrubbedHeaders.includes(headerKey.toLowerCase());
+    return {
+      ...acc,
+      [headerKey]: isScrubbed ? true : requestHeaders[headerKey][0].value,
+    };
+  }, {});
+}
 
-    console.log("the castle client id is: " + props.client_id)
+/**
+ * Return the result of the POST /filter call to Castle API
+ * @param {string} event
+ * @param {object} request
+ */
+async function filterRequest(event, request) {
+  let requestToken = '';
+  let user = {};
 
-    let body = JSON.stringify({
-      event: castleEventName,
-      context: {
-        client_id: props.client_id,
-        ip: request.clientIp,
-        headers: scrubHeaders(request.headers)
-      }
+  if (request.body && request.body.data) {
+    const body = Buffer.from(request.body.data, 'base64').toString();
+
+    /* HTML forms send the data in query string format. Parse it. */
+    const params = querystring.parse(body);
+
+    requestToken = params['castle_request_token'];
+
+    if (params['email']) {
+      user = { email: params['email'] };
+    }
+  }
+
+  const castleRequestBody = JSON.stringify({
+    event,
+    request_token: requestToken,
+    user: user, // optional
+    context: {
+      ip: request.clientIp,
+      headers: scrubHeaders(request.headers),
+    },
+  });
+
+  const authorizationString = Buffer.from(`:${CASTLE_API_SECRET}`).toString(
+    'base64'
+  );
+
+  const requestOptions = {
+    hostname: 'api.castle.io',
+    path: '/v1/filter',
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${authorizationString}`,
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(castleRequestBody),
+    },
+  };
+
+  return new Promise(function (resolve, reject) {
+    const castleApiRequest = https.request(requestOptions, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        return resolve(JSON.parse(data));
+      });
     });
 
-    const authzStringBuffer = new Buffer.from(`:${apiKey}`);
+    castleApiRequest.on('error', () => {
+      reject({
+        // failover action on error
+        policy: {
+          action: 'allow',
+        },
+        failover: true,
+        failover_reason: 'something went wrong with the request to Castle',
+      });
+    });
 
-    const authzString = "Basic " + authzStringBuffer.toString('base64');
-
-    let options = {
-      hostname: "api.castle.io",
-      path: "/v1/authenticate",
-      method: "POST",
-      headers: {
-        Authorization: authzString,
-        "Content-Type": "application/json",
-        "Content-Length": Buffer.byteLength(body)
-      }
-    };
-
-    https
-      .request(options, res => {
-        let data = "";
-        res.on("data", d => {
-          data += d;
-        });
-        res.on("end", () => {
-          console.log("the http response from castle is: ");
-          console.log(data);
-          return resolve(JSON.parse(data));
-        });
-      })
-      .on("error", () => {
-        console.error;
-        return reject({error: "something went wrong with the request to Castle"});
-      })
-      .end(body);
+    // use its "timeout" event to abort the request
+    castleApiRequest.on('timeout', () => {
+      castleApiRequest.abort();
+      reject({
+        // failover action on timeout
+        policy: {
+          action: 'allow',
+        },
+        failover: true,
+        failover_reason: 'request timeout to Castle',
+      });
+    });
+    castleApiRequest.write(castleRequestBody);
+    castleApiRequest.end();
   });
 }
 
-function getCastleEventName(request) {
+/**
+ * Return matched action or undefined
+ * @param {object} request object
+ */
+function findMatchingRoute(request) {
   for (const route of routes) {
-    if (request.method === route.method && request.uri === route.uri) {
-      return route.event;
+    if (request.uri === route.pathname && request.method === route.method) {
+      return route;
     }
   }
-  return "";
 }
 
-function scrubHeaders(requestHeaders) {
+/**
+ * generate response
+ * @param {string} body
+ * @param {number} status
+ * @param {string} contentType
+ */
+function generateResponse(body, status, contentType) {
+  return {
+    body: body,
+    status: status,
+    headers: {
+      'cache-control': [
+        {
+          key: 'Cache-Control',
+          value: 'max-age=100',
+        },
+      ],
+      'content-type': [
+        {
+          key: 'Content-Type',
+          value: contentType,
+        },
+      ],
+      'access-control-allow-origin': [
+        {
+          key: 'Access-Control-Allow-Origin',
+          value: '*',
+        },
+      ],
+      'access-control-allow-methods': [
+        {
+          key: 'Access-Control-Allow-Methods',
+          value: 'GET, HEAD, OPTIONS, POST',
+        },
+      ],
+    },
+  };
+}
 
-  var scrubbedHeaders = {};
-
-  for (var header in requestHeaders) {
-
-    const headersToExclude = ['cookie', 'authorization'];
-
-    if (!(headersToExclude.includes(header))) {
-      scrubbedHeaders[header] = requestHeaders[header][0].value;
-    }
+/**
+ * Process the received request
+ * @param {object} request
+ */
+async function handleRequest(request) {
+  if (!CASTLE_API_SECRET) {
+    throw new Error('CASTLE_API_SECRET not provided');
   }
-  return scrubbedHeaders;
+
+  if (request.uri === '/') {
+    // render page with the form
+    if (!CASTLE_APP_ID) {
+      throw new Error('CASTLE_APP_ID not provided');
+    }
+    return generateResponse(
+      generateHTMLResponse(),
+      200,
+      'text/html;charset=UTF-8'
+    );
+  }
+
+  const route = findMatchingRoute(request);
+
+  if (!route) {
+    // return request;
+    return generateResponse('', 403, 'text/html;charset=UTF-8');
+  }
+
+  const castleResponseJSON = await filterRequest(route.event, request);
+  const castleResponseJSONString = JSON.stringify(castleResponseJSON);
+
+  if (castleResponseJSON && castleResponseJSON.policy.action === 'deny') {
+    // deny response
+    return generateResponse(castleResponseJSONString, 403, 'application/json');
+  }
+
+  // Respond with result fetched from Castle API or fetch the request
+  // return request;
+  return generateResponse(castleResponseJSONString, 200, 'application/json');
 }
 
-exports.handler = (event, context, callback) => {
+exports.handler = async (event, context, callback) => {
+  const request = event.Records[0].cf.request;
+  const response = await handleRequest(request);
 
-    const request = event.Records[0].cf.request;
-
-    console.dir(request);
-
-    const castleEventName = getCastleEventName(request);
-
-    let response;
-
-    if (castleEventName === "") {
-      console.log("rejecting request");
-      response = {
-        status: '405',
-        statusDescription: 'Method Not Allowed'
-      };
-      callback(null, response);
-      return;
-    }
-
-    /******************************************************/
-    // the request is protected by Castle, so let's see what
-    // Castle says about it
-    getCastleAssessment(request, castleEventName)
-    .then(castleAssessment => {
-      console.log("the final castle assessment is:");
-      console.dir(castleAssessment);
-      const riskScore = castleAssessment.risk;
-
-      console.log("the risk score is: " + riskScore);
-
-      let prodStatus;
-
-      if (riskScore > riskThreshold || castleAssessment.action === "deny" ) {
-        prodStatus = "403";
-      }
-      else {
-        prodStatus = "200";
-      }
-
-      let obj = {
-        prodStatus: prodStatus,
-        riskScore: riskScore,
-        riskThreshold: riskThreshold,
-        castleAssessment: castleAssessment
-      };
-
-      const resp = {
-        status: '200',
-        statusDescription: 'OK',
-        headers: {
-            'cache-control': [{
-                key: 'Cache-Control',
-                value: 'max-age=100'
-            }],
-            'content-type': [{
-                key: 'Content-Type',
-                value: 'application/json'
-            }],
-            'access-control-allow-origin': [{
-                key: 'Access-Control-Allow-Origin',
-                value: '*'
-            }],
-            'access-control-allow-methods': [{
-                key: 'Access-Control-Allow-Methods',
-                value: 'GET, HEAD, OPTIONS, POST'
-            }]
-        },
-        body: JSON.stringify(obj)
-      };
-      callback(null, resp);
-    })
-    .catch(error => {
-      const errorResponse = {
-        status: '200',
-        statusDescription: 'OK',
-        headers: {
-            'cache-control': [{
-                key: 'Cache-Control',
-                value: 'max-age=100'
-            }],
-            'content-type': [{
-                key: 'Content-Type',
-                value: 'application/json'
-            }]
-        },
-        body: JSON.stringify(error)
-      };
-      callback(null, errorResponse);      
-    });
+  callback(null, response);
 };
