@@ -1,0 +1,40 @@
+{
+  "Records": [
+    {
+      "cf": {
+        "config": {
+          "distributionId": "EXAMPLE",
+          "eventType": "viewer-request"
+        },
+        "request": {
+          "uri": "/users/sign_up",
+          "method": "POST",
+          "clientIp": "2001:cdba::3257:9652",
+          "headers": {
+            "host": [
+              {
+                "key": "Host",
+                "value": "d123.cf.net"
+              }
+            ],
+            "user-agent": [
+              {
+                "key": "User-Agent",
+                "value": "Test Agent"
+              }
+            ],
+            "user-name": [
+              {
+                "key": "User-Name",
+                "value": "aws-cloudfront"
+              }
+            ]
+          },
+          "body": {
+            "data": "Y2FzdGxlX3JlcXVlc3RfdG9rZW49NXViYVY2cERaSUR3cnQ5QVk1UTRCeDRYWERDV1FOTTdRZVpkS0ZiakprUnZ0aG8yRXNIVGlFRmlWUXh2LUdNc2ZQWVIwRWFwVXR1TmR6bF9RZjZyMVBLNVhsY21uaHRIT0k4NlJDUEpZd1p5eG41bEk0VV9SamFKSlVCNXhoOUdOb002Q0EtSE5RZ050WFp3WXRkbWQzUFRDUjlyeGhkWU1vb3pmeWVFSFVFMnlXTWJkY2hsSG1MT0hXQVdxeG9FWW9vX1F5ZkdFVTBoalRrQllxVS1XaTJMTXdkNzEzZ1liTkppSDNESVlSOWl0VGRPSTVRX0IzZlZZUVp4MERvZ0pOTnZTeVBUYnhrMTVWR2pRbkplRUNhQ1kwMTYwbUMwWEs4NFhDZUtmbnByeGg5YUs1Vi1mQV9QZG04d2h5WkFLNFVsQ0hmVFpveFIxM2dZYzhobkVYWFdlZ2h5MTJ3WWN0eG1HSUxtVmloQzVsWW9RdVpXS0VMbVZpaEM1bFlvUXVaV0tFTG1WaWhDNWxZb1F1WVdhQUttRm1oQzVsWW9RdVpXS0VMbVZpZ0M1bFlvUXVaV0tFTG1WaWk5JmVtYWlsPXRlc3RAY2FzdGxlLmlv"
+          }
+        }
+      }
+    }
+  ]
+}

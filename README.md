@@ -1,24 +1,31 @@
-# Castle at the Edge with AWS Lambda and CloudFront
+<div align="center">
+  <img align="center" alt="Castle logo" src='./assets/castle-logo.svg' width='150'/>
+</div>
+<div align="center">
+  <h1>Castle at the Edge with AWS Lambda and CloudFront
+</h1>
+</div>
+<div align="center">
+  <image alt="Package version" src="https://img.shields.io/github/package-json/v/castle/castle-aws-cloudfront-sample"/>
+  <image alt="License" src="https://img.shields.io/github/license/castle/castle-aws-cloudfront-sample"/>
+</div>
 
 ## Overview
 
 AWS CloudFront allows you to distribute your content globally so that your users can access your content from a source as close to home as possible. AWS Lambda@Edge allows you to add the power of Lambda functions to requests coming in to your CloudFront distribution.
 
-This repo will allow you to attach Castle to a Lambda@Edge function, so that you can block bot traffic at the edge, before malicious requests reach your `/register` or `/login` endpoints (or whatever other endpoint you want to protect).
+This repo will allow you to attach Castle to a Lambda@Edge function, so that you can block bot traffic at the edge, before malicious requests reach your `/users/sign_up` endpoint (or whatever other endpoint you want to protect).
 
 ## How it works
 
 Once you've installed this Lambda function, it will listen for POSTs to the
-
-`/register`
+`/users/sign_up`
 
 route.
 
-The POST should include a Castle `client_id` in the body of the request, with Content-Type: application/x-www-form-urlencoded. Click [here](https://docs.castle.io/preauth/) to learn more about how to include a Castle `client_id` in a POST.
+The POST should include a Castle `castle_request_token` in the body of the request. Click [here](https://castle.io/filter-api/) to learn more about how to include a Castle `request_token` in a POST.
 
-> Note: Lambda@Edge + Cloudfront does not appear to support custom headers at this point, so you must include the `client_id` in the body. 
-
-When the Lambda function receives the POST, it will in turn make a POST to Castle, and receive a verdict (`action`) and risk score in return. If the risk score is above the `riskThreshold`, or the verdict is "deny", then the function will respond with a 403. If the risk score is below the `riskThreshold`, or the verdict is not "deny", the function will respond with a 200.
+When the Lambda function receives the POST, it will in turn make a POST to Castle, and receive a verdict (`policy[action]`) and risk score in return if the verdict is "deny", then the function will respond with a 403.
 
 ## Prerequisites
 
@@ -36,7 +43,7 @@ Lambda@Edge requires a CloudFront distribution to function. So, even though this
 
 A couple of notes as you set up your CloudFront distribution:
 
-* You must explicitly allow POST requests. (By default, POST requests are not allowed.)
+* You must explicitly allow POST requests. (By default, POST requests are not allowed. You need to allow `GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE` HTTP Methods)
 * Ignore the Lambda section for now. We're going to attach the Lambda function "manually".
 
 ### Prepare the repo
@@ -45,16 +52,16 @@ Before you set up your Lambda function, you need to prepare this repo, which inv
 
 1. download the repo
 2. install dependencies
-3. add your Castle API key
+3. add your Castle API Secret
 4. create a .zip archive
 
 #### Download the repo
 
-`git clone https://github.com/castle/castle-cloudfront`
+`git clone https://github.com/castle/castle-aws-cloudfront-sample`
 
 #### Install dependencies
 
-`cd castle-cloudfront`
+`cd castle-aws-cloudfront-sample`
 
 `npm install`
 
@@ -62,17 +69,17 @@ Before you set up your Lambda function, you need to prepare this repo, which inv
 
 Unlike standard Lambda functions, Lambda@Edge functions do *not* allow environment variables.
 
-So, I have created a file - `apiKeyExample.json` - in this repo. Copy the file 
+So to proceed you have to copy the file 
 
-`apiKeyExample.json`
+`config.example.json`
 
 to
 
-`apiKey.json`
+`config.json`
 
-and put your Castle API key in the `apiKey.json` file.
+and put your Castle API Secret and APP ID in the `config.json` file.
 
-> Note: this pattern of putting the API key in a separate file simply allows the API key to be easily excluded from source control. The API key will be visible to any AWS user/role who has access to the source of the Lambda function (just like environment variables).
+> Note: this pattern of putting the API Secret in a separate file simply allows the API key to be easily excluded from source control. The API Secret will be visible to any AWS user/role who has access to the source of the Lambda function (just like environment variables).
 
 > Note: the default CORS policy in this script is to allow all origins; you can adjust as necessary.
 
@@ -80,7 +87,7 @@ and put your Castle API key in the `apiKey.json` file.
 
 This command will create a `.zip` archive:
 
-`zip -r function.zip .`
+`zip -x ".git" -r function.zip .`
 
 ### Create a new Lambda function
 
@@ -88,19 +95,19 @@ Log in to your AWS Console->Lambda
 
 * Create function
 
-* Author from scratch
-* Function name: castle-edge
-* Runtime: Node.js 12.x <- important! Lambda@Edge does not support Node 14!
+* Select `Author from scratch`
+* Enter function name: castle-edge
+* Runtime: Node.js
 
 * Create function
 
 On the function home screen:
 
-Scroll down to the Function code section and click Actions->Upload a .zip file
+Scroll down to the Function `Code source` section and select `.zip fil`e from the `Upload from`
 
 Upload the zip archive that you created.
 
-Click on the Permissions tab and add 
+Click on newly created roe in the Configuration/Permissions tab and add
 
 `edgelambda.amazonaws.com` 
 
@@ -110,15 +117,15 @@ to the Trust Relationship for the role that was created automatically when you c
 
 #### Test your Lambda function
 
-You can test your Lambda function with the `clientIDbody.json` sample event included in the `sampleRequests` directory.
+You can test your Lambda function with the `cloudfront_request.json` sample event included in the `requests` directory and by running `node test.js`
 
 #### Add a CloudFront trigger
 
 > As of March 2021, Lambda@Edge functions are available only the `us-east-1` region. If you don't see Cloudfront in the list of triggers, make sure you're in the `us-east-1` region.
 
-Click Add Trigger
+Click Add Trigger (Configuration/Trigger)
 
-Select the CloudFront trigger
+Select the CloudFront 
 
 Click Deploy to Lambda@Edge
 
@@ -138,7 +145,7 @@ After you deploy, it will take a few minutes (sometimes longer) for the Lambda f
 
 To test the deployment, send a POST to:
 
-`{{cloudfront_url}}/register`
+`{{cloudfront_url}}/users/sign_up`
 
 A sample CURL request is included in the `sampleRequests` folder.
 
@@ -156,8 +163,6 @@ Your result will look something like this:
     }
 }
 
-The "prodStatus" field indicates what the actual response would be in production.
-
 ## Adapting To Your Use Case
 
-To add new routes and methods to be protected by Castle, you can edit the `routes.json` file to include additional routes. You may want to add the route for your login endpoint, as well as the route for your password reset endpoint.
+To add new routes, methods and customize the sample to be protected by Castle. You may want to add the route for your login endpoint, as well as the route for your password reset endpoint.

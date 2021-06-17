@@ -1,5 +1,5 @@
-
-apiKey.json
+config.json
 .DS_STORE
 function.zip
 node_modules
+package-lock.json

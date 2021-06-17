@@ -1,5 +1,12 @@
 {
-  "dependencies": {
-    "querystring": "^0.2.1"
-  }
+  "private": true,
+  "name": "castle-aws-cloudfront-sample",
+  "version": "1.0.0",
+  "description": "Castle at the Edge with AWS Lambda and CloudFront",
+  "main": "index.js",
+  "author": {
+    "name": "castle.io",
+    "url": "https://castle.io"
+  },
+  "license": "MIT"
 }
